@@ -1,0 +1,82 @@
+;默认采用ML6.11汇编程序
+DATAS SEGMENT
+    ;此处输入数据段代码  
+TIPS1 DB 'Your lowercase String:',13,10,'$'
+TIPS2 DB 'Turn Uppercase String:',13,10,'$'
+TIPS3 DB 'Error Input! Try again!',13,10,'$'
+BUF   DB 255        ;缓冲区长度
+      DB ?          ;实际输入个数
+      DB 255 DUP('$') ;存储空间
+CRLF  DB 0AH,0DH,'$'  ;换行
+DATAS ENDS
+
+STACKS SEGMENT PARA STACK
+    ;此处输入堆栈段代码
+    DW 20H DUP(0)
+STACKS ENDS
+
+CODES SEGMENT
+    ASSUME CS:CODES,DS:DATAS,SS:STACKS
+START:
+    MOV AX,DATAS
+    MOV DS,AX
+  
+    ;此处输入代码段代码
+    LEA DX,TIPS1  ;输出提示语1
+    MOV AH,9
+    INT 21H
+     
+    LEA DX,BUF   ;输入字符串
+    MOV AH,10
+    INT 21H
+    
+    LEA DX,CRLF   ;换行
+    MOV AH,9
+    INT 21H
+    
+    MOV SI,1
+    MOV CL,BUF[1] ;用cx做循环计数由于类型不匹配，会出错
+                  ;CL存放字符串长度
+TRANS:
+	INC SI
+	MOV AL,BUF[SI]  ;字符串从偏移量为2的地方开始
+	CMP AL,97       ;小于a不合法
+	JB ERROR
+	CMP AL,122     ;大于z不合法
+	JA ERROR
+	SUB AL,32      ;转为对应大写字母
+	MOV BUF[SI],AL ;替换原字符存入
+	LOOP TRANS     ;继续检测并转换下一个字符
+	MOV BUF[SI+1],'$'  ;字符串需以$结尾
+	JMP PRIN      ;转换完成，跳转至输出
+	  
+ERROR:    
+    LEA DX,TIPS3  ;输出提示语3
+    MOV AH,9
+    INT 21H
+	JMP OVER
+		
+PRIN:
+	LEA DX,TIPS2  ;输出提示语2
+    MOV AH,9
+    INT 21H
+
+    LEA DX,BUF[2]  ;输出转换后的字符串
+    MOV AH,9
+    INT 21H
+    
+    LEA DX,CRLF  ;换行
+    MOV AH,9
+    INT 21H
+    
+OVER:
+	LEA DX,CRLF  ;换行
+    MOV AH,9
+    INT 21H
+    
+    JMP START
+    
+    MOV AH,4CH
+    INT 21H
+CODES ENDS
+    END START

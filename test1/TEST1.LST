@@ -1,0 +1,136 @@
+Microsoft (R) Macro Assembler Version 6.11		    05/30/22 17:09:41
+test1.asm						     Page 1 - 1
+
+
+				;默认采用ML6.11汇编程序
+ 0000				DATAS SEGMENT
+				    ;此处输入数据段代码
+ 0000 45 6E 74 65 72 20		TIPS1 DB 'Enter Your First String:$'
+       59 6F 75 72 20 46
+       69 72 73 74 20 53
+       74 72 69 6E 67 3A
+       24
+ 0019 45 6E 74 65 72 20		TIPS2 DB 'Enter Your Second String:$'
+       59 6F 75 72 20 53
+       65 63 6F 6E 64 20
+       53 74 72 69 6E 67
+       3A 24
+ 0033 FF			BUF1  DB 255        ;缓冲区长度
+ 0034  00			      DB ?          ;实际输入个数
+ 0035  00FF [			      DB 255 DUP('$') ;存储空间
+        24
+       ]
+ 0134 FF			BUF2  DB 255        ;缓冲区长度
+ 0135  00			      DB ?          ;实际输入个数
+ 0136  00FF [			      DB 255 DUP('$') ;存储空间
+        24
+       ]
+ 0235 0A 0D 24			CRLF  DB 0AH,0DH,'$'  ;换行
+ 0238				DATAS ENDS
+
+ 0000				STACKS SEGMENT PARA STACK
+				    ;此处输入堆栈段代码
+ 0000  0020 [			    DW 20H DUP(0)
+        0000
+       ]
+ 0040				STACKS ENDS
+
+ 0000				CODES SEGMENT
+				    ASSUME CS:CODES,DS:DATAS,SS:STACKS
+ 0000				START:
+ 0000  B8 ---- R		    MOV AX,DATAS
+ 0003  8E D8			    MOV DS,AX
+				    ;此处输入代码段代码
+				    
+ 0005  8D 16 0000 R		    LEA DX,TIPS1  ;输出提示语1
+ 0009  B4 09			    MOV AH,9
+ 000B  CD 21			    INT 21H
+				    
+ 000D  8D 16 0033 R		    LEA DX,BUF1   ;输入第一个字符串
+ 0011  B4 0A			    MOV AH,10
+ 0013  CD 21			    INT 21H
+				     
+ 0015  8D 16 0235 R		    LEA DX,CRLF   ;换行
+ 0019  B4 09			    MOV AH,9
+ 001B  CD 21			    INT 21H
+				    
+ 001D  8D 16 0019 R		    LEA DX,TIPS2  ;输出提示语2
+ 0021  B4 09			    MOV AH,9
+ 0023  CD 21			    INT 21H
+				    
+ 0025  8D 16 0134 R		    LEA DX,BUF2   ;输入第二个字符串
+ 0029  B4 0A			    MOV AH,10
+ 002B  CD 21			    INT 21H
+				    
+ 002D  8D 16 0235 R		    LEA DX,CRLF   ;换行
+ 0031  B4 09			    MOV AH,9
+ 0033  CD 21			    INT 21H
+				    
+ 0035  8A 0E 0034 R		    MOV CL,BUF1[1]  ;用cx做循环计数由于类型不匹配，会出错
+ 0039  3A 0E 0135 R		    CMP CL,BUF2[1]  ;比较两个字符串长度
+ 003D  74 02			    JE COMPARE     ;长度相等跳转至依次比较字符
+ 003F  EB 12			    JMP NO         ;长度不相等则直接跳转输出
+				    
+ 0041				COMPARE:
+ 0041  BE 0001				MOV SI,1       
+ 0044				LOP:
+ 0044  46			    INC SI           ;SI=SI+1
+ 0045  8A 84 0033 R		    MOV AL,BUF1[SI]  ;字符串从偏移量为2的地方开始
+ 0049  3A 84 0134 R		    CMP AL,BUF2[SI]  ;依次比较字符
+ 004D  75 04			    JNE NO        ;不相等则跳转至NO
+ 004F  E2 F3			    LOOP LOP      ;相等则继续比较下一个字符
+ 0051  EB 08			    JMP YES       ;遍历结束，跳转至YES
+				    
+ 0053  B2 4E			NO: MOV DL,'N'    ;输出‘N’
+ 0055  B4 02			    MOV AH,2
+ 0057  CD 21			    INT 21H
+ 0059  EB 08			    JMP OVER    
+				    
+ 005B  B2 59			YES:MOV DL,'Y'    ;输出‘Y’
+ 005D  B4 02				MOV AH,2
+ 005F  CD 21			    INT 21H
+ 0061  EB 00			    JMP OVER       
+				    
+ 0063				OVER:
+ 0063  8D 16 0235 R			LEA DX,CRLF   ;换行
+ 0067  B4 09			    MOV AH,9
+ 0069  CD 21			    INT 21H
+ 006B  EB 93			    JMP START   ;重新开始
+				    
+ 006D  B4 4C			    MOV AH,4CH
+ 006F  CD 21			    INT 21H
+ 0071				CODES ENDS
+				    END START
+Microsoft (R) Macro Assembler Version 6.11		    05/30/22 17:09:41
+test1.asm						     Symbols 2 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+CODES  . . . . . . . . . . . . .	16 Bit	 0071	  Para	  Private 
+DATAS  . . . . . . . . . . . . .	16 Bit	 0238	  Para	  Private 
+STACKS . . . . . . . . . . . . .	16 Bit	 0040	  Para	  Stack	  
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+BUF1 . . . . . . . . . . . . . .	Byte	 0033	  DATAS	
+BUF2 . . . . . . . . . . . . . .	Byte	 0134	  DATAS	
+COMPARE  . . . . . . . . . . . .	L Near	 0041	  CODES	
+CRLF . . . . . . . . . . . . . .	Byte	 0235	  DATAS	
+LOP  . . . . . . . . . . . . . .	L Near	 0044	  CODES	
+NO . . . . . . . . . . . . . . .	L Near	 0053	  CODES	
+OVER . . . . . . . . . . . . . .	L Near	 0063	  CODES	
+START  . . . . . . . . . . . . .	L Near	 0000	  CODES	
+TIPS1  . . . . . . . . . . . . .	Byte	 0000	  DATAS	
+TIPS2  . . . . . . . . . . . . .	Byte	 0019	  DATAS	
+YES  . . . . . . . . . . . . . .	L Near	 005B	  CODES	
+
+	   0 Warnings
+	   0 Errors

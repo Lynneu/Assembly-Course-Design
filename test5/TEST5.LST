@@ -1,0 +1,298 @@
+Microsoft (R) Macro Assembler Version 6.11		    05/30/22 17:07:12
+test5.asm						     Page 1 - 1
+
+
+ 0000				DATAS SEGMENT
+				    ;此处输入数据段代码  
+ 0000 45 6E 74 65 72 20		TIPS1 DB 'Enter Seven Number Separated By Space:',13,10,'$'
+       53 65 76 65 6E 20
+       4E 75 6D 62 65 72
+       20 53 65 70 61 72
+       61 74 65 64 20 42
+       79 20 53 70 61 63
+       65 3A 0D 0A 24
+ 0029 45 72 72 6F 72 20		TIPS2 DB 'Error Input! Try again!',13,10,'$'
+       49 6E 70 75 74 21
+       20 54 72 79 20 61
+       67 61 69 6E 21 0D
+       0A 24
+ 0043 54 68 65 20 41 76		TIPS3 DB 'The Average Score is: $'
+       65 72 61 67 65 20
+       53 63 6F 72 65 20
+       69 73 3A 20 24
+ 005A FF			NUM   DB 255        ;缓冲区长度
+ 005B  00			      DB ?          ;实际输入个数
+ 005C  00FF [			      DB 255 DUP('$') ;存储空间
+        24
+       ]
+ 015B  000A [			NUM_Dec DB 10 DUP(?) ;存放7组数据
+        00
+       ]
+ 0165  000A [			AVERAGE DB 10 DUP(?) ;存放平均值
+        00
+       ]
+ 016F  000A [			NUM_TEMP DB 10 DUP(?) ;临时数组
+        00
+       ]
+ 0179 0A			TEN_DB  DB 10         ;8位10
+ 017A 000A			TEN_DW  DW 10         ;16位10
+ 017C 64			HUN_DB  DB 100        ;8位100
+ 017D 0A 0D 24			LINE  DB 0AH,0DH,'$'  ;换行
+ 0180				DATAS ENDS
+
+ 0000				STACKS SEGMENT
+ 0000  0020 [			     DW 20H DUP(0)
+        0000
+       ]
+ 0040				STACKS ENDS
+
+ 0000				CODES SEGMENT
+				    ASSUME CS:CODES,DS:DATAS,SS:STACKS
+ 0000				START:
+ 0000  B8 ---- R		    MOV AX,DATAS
+ 0003  8E D8			    MOV DS,AX
+				    
+ 0005  8D 16 0000 R		    LEA DX,TIPS1  ;输出提示语1
+ 0009  B4 09			    MOV AH,9
+ 000B  CD 21			    INT 21H
+				    
+ 000D  B9 0007			    MOV CX,7          ;循环7次 
+ 0010  BF 0000			    MOV DI,0          ;DI为存放十进制数数组的偏移量
+ 0013				INPUT_7:
+ 0013  8D 1E 005A R		    LEA BX,NUM        ;BX指向输入的字符串
+ 0017  51			    PUSH CX           ;保存CX，子程序中CX会被更改
+ 0018  E8 001C			    CALL INPUT        ;输入并检查合法性
+ 001B  81 F9 00FF		    CMP CX,0FFH       ;若CX被置为0FFH则不合法
+ 001F  75 03 E9 00FB		    JZ OVER
+ 0024  59			    POP CX            ;恢复CX
+ 0025  E8 00EE			    CALL PRINT_LINE   ;换行
+ 0028  E2 E9			    LOOP INPUT_7      ;循环输入7个数
+				    
+ 002A  8D 1E 015B R		    LEA BX,NUM_Dec     ;BX指向储存7个数的NUM_Dec数组
+ 002E  E8 00C5			    CALL SORT          ;排序
+				    
+ 0031  E8 0060				CALL PRINT_AVERAGE   ;计算并打印平均值
+ 0034  E9 00E8				JMP OVER
+
+ 0037				INPUT PROC
+ 0037  8B D3				MOV DX,BX    ;输入一个数
+ 0039  B4 0A			    MOV AH,10     
+ 003B  CD 21			    INT 21H
+
+ 003D  33 D2				XOR DX,DX    ;清零
+ 003F  BE 0001				MOV SI,1
+ 0042  8A 08				MOV CL,[BX][SI]  ;若长度大于3则非法
+ 0044  80 F9 03				CMP CL,3
+ 0047  77 3C				JA ERROR
+ 0049				CHECK:
+ 0049  33 C0				XOR AX,AX
+ 004B  46				INC SI           ;SI=SI+1
+ 004C  8A 00				MOV AL,[BX][SI]  ;字符串是从偏移量为2的地方开头
+					;MOV BYTE PTR [BX][SI],'$'    ;将原位置置为‘$’
+ 004E  3C 30				CMP AL,30H      ;若小于0则非法
+ 0050  72 33			 	JB ERROR
+ 0052  3C 39			 	CMP AL,39H      ;若大于9则非法
+ 0054  77 2F			 	JA ERROR
+ 0056  3C 31			 	CMP AL,31H      ;若为0或1则跳转
+ 0058  76 05			 	JNA TRANS1
+ 005A  80 F9 03			 	CMP CL,3        ;若为2-9之间，则此时若为百位则非法
+ 005D  74 26			 	JE ERROR
+ 005F				TRANS1:	
+ 005F  2C 30			 	SUB AL,30H      ;从ASCII值转换为数字
+ 0061  80 F9 03			 	CMP CL,3        ;若为百位，乘100
+ 0064  75 06			 	JNZ CHECK2
+ 0066  F6 26 017C R			MUL HUN_DB	
+ 006A  EB 09				JMP CHECK3
+ 006C				CHECK2: 
+ 006C  80 F9 02				CMP CL,2       ;若为十位，乘10
+ 006F  75 04				JNZ CHECK3     ;若为个位，不做处理
+ 0071  F6 26 0179 R		 	MUL TEN_DB
+ 0075				CHECK3:
+ 0075  02 D0				ADD DL,AL      ;将该数值加入DL中
+ 0077  E2 D0				LOOP CHECK
+
+ 0079				CHECK_UPPER:
+ 0079  80 FA 64				CMP DL,100          ;比较输入十进制数是否大于100，大于则非法
+ 007C  77 07				JA ERROR	
+ 007E  88 95 015B R			MOV NUM_Dec[DI],DL   ;将转换后的十进制数存入数组中
+ 0082  47				INC DI               ;偏移量加1		
+ 0083  EB 0E				JMP EXIT
+					
+ 0085				ERROR:
+ 0085  E8 008E				CALL PRINT_LINE   ;换行
+ 0088  8D 16 0029 R		 	LEA DX,TIPS2  ;输出提示语2
+ 008C  B4 09			    MOV AH,9
+ 008E  CD 21			    INT 21H
+ 0090  B9 00FF			 	MOV CX,0FFH   ;置CX为0FFH
+ 0093  C3			EXIT: RET         ;返回
+ 0094				INPUT ENDP
+
+				;计算并打印平均值
+ 0094				PRINT_AVERAGE PROC
+ 0094  33 C0				XOR AX,AX     ;AX清零
+ 0096  BE 0001				MOV SI,1      ;排序后的数组取下标为1-5的元素相加
+ 0099  B9 0005				MOV CX,5      ;循环5次
+ 009C				SUM:
+ 009C  33 D2				XOR DX,DX       ;DX清零
+ 009E  8A 10				MOV DL,[BX][SI] ;取一个数存在DL中
+ 00A0  03 C2			  	ADD AX,DX       ;AX依次加上五个数
+ 00A2  46			  	INC SI          ;偏移量加1
+ 00A3  E2 F7			  	LOOP SUM
+					
+ 00A5  33 D2				XOR DX,DX       ;清零
+ 00A7  B9 0005				MOV CX,5
+ 00AA  F7 F1				DIV CX          ;总和除以5
+ 00AC  A2 0165 R			MOV AVERAGE,AL  ;AL中为整数部分，存入数组
+ 00AF  D0 E2				SHL DL,1        ;余数*10/5，相当于*2，即为小数部分
+ 00B1  88 16 0166 R			MOV AVERAGE[1],DL  ;小数部分存入数组
+					
+ 00B5  BE 0000				MOV SI,0       ;SI为临时数组的偏移量
+ 00B8				TURN_AVERAGE:
+ 00B8  33 D2				XOR DX,DX      ;清零
+ 00BA  F7 36 017A R			DIV TEN_DW     ;除10取余得到各个位上的数值，余数存放在DL中
+ 00BE  80 C2 30				ADD DL,30H     ;余数转换为ASCII
+ 00C1  88 94 016F R			MOV NUM_TEMP[SI],DL ;整数部分存入临时数组
+ 00C5  46				INC SI
+ 00C6  83 F8 00				CMP AX,0      ;商为0则算法结束	
+ 00C9  77 ED				JA TURN_AVERAGE
+					
+ 00CB  8D 16 0043 R			LEA DX,TIPS3  ;输出提示语3
+ 00CF  B4 09			    MOV AH,9
+ 00D1  CD 21			    INT 21H	
+ 00D3				PRINT:
+ 00D3  4E				DEC SI               ;SI为数组中元素个数 
+ 00D4  8A 94 016F R			MOV DL,NUM_TEMP[SI]  ;按存放逆序输出即为正序
+ 00D8  B4 02				MOV AH,2             ;依次输出各个数位上的数值
+ 00DA  CD 21				INT 21H
+ 00DC  83 FE 00				CMP SI,0            ;SI为0说明最后一个数已输出
+ 00DF  75 F2				JNZ PRINT
+					
+ 00E1  BA 002E				MOV DX,'.'	       ;输出小数点
+ 00E4  B4 02				MOV AH,2
+ 00E6  CD 21				INT 21H
+					
+ 00E8  33 D2				XOR DX,DX          ;DX清零，后续要存放小数部分
+ 00EA  8A 16 0166 R			MOV DL,AVERAGE[1]  ;输出小数部分
+ 00EE  80 C2 30				ADD DL,30H	       ;转换为ASCII
+ 00F1  B4 02				MOV AH,2
+ 00F3  CD 21				INT 21H
+ 00F5  C3				RET
+ 00F6				PRINT_AVERAGE ENDP
+
+ 00F6				SORT PROC
+				;冒泡排序
+ 00F6  B9 0006				MOV CX,6   ;七个数，外层循环执行6次
+ 00F9				SORT1:
+ 00F9  BE 0000				MOV SI,0   ;BX偏移量
+ 00FC  BF 0000				MOV DI,0   ;内层循环次数
+ 00FF				SORT2:
+ 00FF  8A 00				MOV AL,[BX][SI]    ;取第一个元素
+ 0101  8A 50 01				MOV DL,[BX][SI+1]  ;取第二个元素
+ 0104  38 D0				CMP AL,DL    ;比较第一个元素和第二个元素的大小，若前者更大则跳转
+ 0106  73 05				JNB SORT3
+ 0108  88 10				MOV [BX][SI],DL  ;若前者更小，则交换
+ 010A  88 40 01				MOV [BX][SI+1],AL
+ 010D				SORT3:
+ 010D  46				INC SI      ;偏移量加1
+ 010E  47				INC DI	    ;计数加1
+ 010F  3B F9				CMP DI,CX   ;DI记录内层循环个数，若DI<CX,继续比较后面的元素
+ 0111  72 EC				JB SORT2
+ 0113  E2 E4				LOOP SORT1  ;内层循环结束，开始下一次外层循环
+
+ 0115  C3				RET
+ 0116				SORT ENDP
+
+ 0116				PRINT_LINE PROC
+ 0116  8D 16 017D R		 	LEA DX,LINE   ;换行
+ 011A  B4 09			    MOV AH,9
+ 011C  CD 21			    INT 21H
+ 011E  C3			 	RET
+ 011F				PRINT_LINE ENDP
+				   
+ 011F				OVER:
+ 011F  8D 1E 005A R			LEA BX,NUM     ;BX指向NUM字符串
+ 0123  B0 24				MOV AL,24H     ;AL存‘$’
+ 0125  BE 0000				MOV SI,0       ;SI为BX偏移量
+ 0128  B9 00FF				MOV CX,255     ;循环次数为缓冲区长度
+ 012B				CLEAR_NUM:            ;重置NUM
+ 012B  88 00				MOV [BX][SI],AL  ;全部重置为‘$’
+ 012D  46				INC SI
+ 012E  E2 FB				LOOP CLEAR_NUM
+					
+ 0130  BE 0000				MOV SI,0        ;SI为偏移量，三个数组长度相等
+ 0133  B9 000A				MOV CX,10       ;循环十次
+ 0136				CLEAR_ALL:          ;重置三个数组
+ 0136  88 84 015B R			MOV NUM_Dec[SI],AL
+ 013A  88 84 0165 R			MOV AVERAGE[SI],AL
+ 013E  88 84 016F R			MOV NUM_TEMP[SI],AL
+ 0142  46				INC SI
+ 0143  E2 F1				LOOP CLEAR_ALL
+
+ 0145  E8 FFCE			 	CALL PRINT_LINE ;换行
+ 0148  E9 FEB5			 	JMP START       ;重新开始
+				    
+ 014B  B4 4C			    MOV AH,4CH
+ 014D  CD 21			    INT 21H
+ 014F				CODES ENDS
+				    END START
+Microsoft (R) Macro Assembler Version 6.11		    05/30/22 17:07:12
+test5.asm						     Symbols 2 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+CODES  . . . . . . . . . . . . .	16 Bit	 014F	  Para	  Private 
+DATAS  . . . . . . . . . . . . .	16 Bit	 0180	  Para	  Private 
+STACKS . . . . . . . . . . . . .	16 Bit	 0040	  Para	  Private 
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+INPUT  . . . . . . . . . . . . .	P Near	 0037	  CODES	Length= 005D Public
+  CHECK  . . . . . . . . . . . .	L Near	 0049	  CODES	
+  TRANS1 . . . . . . . . . . . .	L Near	 005F	  CODES	
+  CHECK2 . . . . . . . . . . . .	L Near	 006C	  CODES	
+  CHECK3 . . . . . . . . . . . .	L Near	 0075	  CODES	
+  CHECK_UPPER  . . . . . . . . .	L Near	 0079	  CODES	
+  ERROR  . . . . . . . . . . . .	L Near	 0085	  CODES	
+  EXIT . . . . . . . . . . . . .	L Near	 0093	  CODES	
+PRINT_AVERAGE  . . . . . . . . .	P Near	 0094	  CODES	Length= 0062 Public
+  SUM  . . . . . . . . . . . . .	L Near	 009C	  CODES	
+  TURN_AVERAGE . . . . . . . . .	L Near	 00B8	  CODES	
+  PRINT  . . . . . . . . . . . .	L Near	 00D3	  CODES	
+PRINT_LINE . . . . . . . . . . .	P Near	 0116	  CODES	Length= 0009 Public
+SORT . . . . . . . . . . . . . .	P Near	 00F6	  CODES	Length= 0020 Public
+  SORT1  . . . . . . . . . . . .	L Near	 00F9	  CODES	
+  SORT2  . . . . . . . . . . . .	L Near	 00FF	  CODES	
+  SORT3  . . . . . . . . . . . .	L Near	 010D	  CODES	
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+AVERAGE  . . . . . . . . . . . .	Byte	 0165	  DATAS	
+CLEAR_ALL  . . . . . . . . . . .	L Near	 0136	  CODES	
+CLEAR_NUM  . . . . . . . . . . .	L Near	 012B	  CODES	
+HUN_DB . . . . . . . . . . . . .	Byte	 017C	  DATAS	
+INPUT_7  . . . . . . . . . . . .	L Near	 0013	  CODES	
+LINE . . . . . . . . . . . . . .	Byte	 017D	  DATAS	
+NUM_Dec  . . . . . . . . . . . .	Byte	 015B	  DATAS	
+NUM_TEMP . . . . . . . . . . . .	Byte	 016F	  DATAS	
+NUM  . . . . . . . . . . . . . .	Byte	 005A	  DATAS	
+OVER . . . . . . . . . . . . . .	L Near	 011F	  CODES	
+START  . . . . . . . . . . . . .	L Near	 0000	  CODES	
+TEN_DB . . . . . . . . . . . . .	Byte	 0179	  DATAS	
+TEN_DW . . . . . . . . . . . . .	Word	 017A	  DATAS	
+TIPS1  . . . . . . . . . . . . .	Byte	 0000	  DATAS	
+TIPS2  . . . . . . . . . . . . .	Byte	 0029	  DATAS	
+TIPS3  . . . . . . . . . . . . .	Byte	 0043	  DATAS	
+
+	   0 Warnings
+	   0 Errors

@@ -1,0 +1,134 @@
+Microsoft (R) Macro Assembler Version 6.11		    05/30/22 17:09:57
+test2.asm						     Page 1 - 1
+
+
+				;默认采用ML6.11汇编程序
+ 0000				DATAS SEGMENT
+				    ;此处输入数据段代码  
+ 0000 59 6F 75 72 20 6C		TIPS1 DB 'Your lowercase String:',13,10,'$'
+       6F 77 65 72 63 61
+       73 65 20 53 74 72
+       69 6E 67 3A 0D 0A
+       24
+ 0019 54 75 72 6E 20 55		TIPS2 DB 'Turn Uppercase String:',13,10,'$'
+       70 70 65 72 63 61
+       73 65 20 53 74 72
+       69 6E 67 3A 0D 0A
+       24
+ 0032 45 72 72 6F 72 20		TIPS3 DB 'Error Input! Try again!',13,10,'$'
+       49 6E 70 75 74 21
+       20 54 72 79 20 61
+       67 61 69 6E 21 0D
+       0A 24
+ 004C FF			BUF   DB 255        ;缓冲区长度
+ 004D  00			      DB ?          ;实际输入个数
+ 004E  00FF [			      DB 255 DUP('$') ;存储空间
+        24
+       ]
+ 014D 0A 0D 24			CRLF  DB 0AH,0DH,'$'  ;换行
+ 0150				DATAS ENDS
+
+ 0000				STACKS SEGMENT PARA STACK
+				    ;此处输入堆栈段代码
+ 0000  0020 [			    DW 20H DUP(0)
+        0000
+       ]
+ 0040				STACKS ENDS
+
+ 0000				CODES SEGMENT
+				    ASSUME CS:CODES,DS:DATAS,SS:STACKS
+ 0000				START:
+ 0000  B8 ---- R		    MOV AX,DATAS
+ 0003  8E D8			    MOV DS,AX
+				  
+				    ;此处输入代码段代码
+ 0005  8D 16 0000 R		    LEA DX,TIPS1  ;输出提示语1
+ 0009  B4 09			    MOV AH,9
+ 000B  CD 21			    INT 21H
+				     
+ 000D  8D 16 004C R		    LEA DX,BUF   ;输入字符串
+ 0011  B4 0A			    MOV AH,10
+ 0013  CD 21			    INT 21H
+				    
+ 0015  8D 16 014D R		    LEA DX,CRLF   ;换行
+ 0019  B4 09			    MOV AH,9
+ 001B  CD 21			    INT 21H
+				    
+ 001D  BE 0001			    MOV SI,1
+ 0020  8A 0E 004D R		    MOV CL,BUF[1] ;用cx做循环计数由于类型不匹配，会出错
+				                  ;CL存放字符串长度
+ 0024				TRANS:
+ 0024  46				INC SI
+ 0025  8A 84 004C R			MOV AL,BUF[SI]  ;字符串从偏移量为2的地方开始
+ 0029  3C 61				CMP AL,97       ;小于a不合法
+ 002B  72 13				JB ERROR
+ 002D  3C 7A				CMP AL,122     ;大于z不合法
+ 002F  77 0F				JA ERROR
+ 0031  2C 20				SUB AL,32      ;转为对应大写字母
+ 0033  88 84 004C R			MOV BUF[SI],AL ;替换原字符存入
+ 0037  E2 EB				LOOP TRANS     ;继续检测并转换下一个字符
+ 0039  C6 84 004D R 24			MOV BUF[SI+1],'$'  ;字符串需以$结尾
+ 003E  EB 0A				JMP PRIN      ;转换完成，跳转至输出
+					  
+ 0040				ERROR:    
+ 0040  8D 16 0032 R		    LEA DX,TIPS3  ;输出提示语3
+ 0044  B4 09			    MOV AH,9
+ 0046  CD 21			    INT 21H
+ 0048  EB 18				JMP OVER
+						
+ 004A				PRIN:
+ 004A  8D 16 0019 R			LEA DX,TIPS2  ;输出提示语2
+ 004E  B4 09			    MOV AH,9
+ 0050  CD 21			    INT 21H
+
+ 0052  8D 16 004E R		    LEA DX,BUF[2]  ;输出转换后的字符串
+ 0056  B4 09			    MOV AH,9
+ 0058  CD 21			    INT 21H
+				    
+ 005A  8D 16 014D R		    LEA DX,CRLF  ;换行
+ 005E  B4 09			    MOV AH,9
+ 0060  CD 21			    INT 21H
+				    
+ 0062				OVER:
+ 0062  8D 16 014D R			LEA DX,CRLF  ;换行
+ 0066  B4 09			    MOV AH,9
+ 0068  CD 21			    INT 21H
+				    
+ 006A  EB 94			    JMP START
+				    
+ 006C  B4 4C			    MOV AH,4CH
+ 006E  CD 21			    INT 21H
+ 0070				CODES ENDS
+				    END START
+Microsoft (R) Macro Assembler Version 6.11		    05/30/22 17:09:57
+test2.asm						     Symbols 2 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+CODES  . . . . . . . . . . . . .	16 Bit	 0070	  Para	  Private 
+DATAS  . . . . . . . . . . . . .	16 Bit	 0150	  Para	  Private 
+STACKS . . . . . . . . . . . . .	16 Bit	 0040	  Para	  Stack	  
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+BUF  . . . . . . . . . . . . . .	Byte	 004C	  DATAS	
+CRLF . . . . . . . . . . . . . .	Byte	 014D	  DATAS	
+ERROR  . . . . . . . . . . . . .	L Near	 0040	  CODES	
+OVER . . . . . . . . . . . . . .	L Near	 0062	  CODES	
+PRIN . . . . . . . . . . . . . .	L Near	 004A	  CODES	
+START  . . . . . . . . . . . . .	L Near	 0000	  CODES	
+TIPS1  . . . . . . . . . . . . .	Byte	 0000	  DATAS	
+TIPS2  . . . . . . . . . . . . .	Byte	 0019	  DATAS	
+TIPS3  . . . . . . . . . . . . .	Byte	 0032	  DATAS	
+TRANS  . . . . . . . . . . . . .	L Near	 0024	  CODES	
+
+	   0 Warnings
+	   0 Errors

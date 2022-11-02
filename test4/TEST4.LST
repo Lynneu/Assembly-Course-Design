@@ -1,0 +1,285 @@
+Microsoft (R) Macro Assembler Version 6.11		    05/31/22 14:40:50
+test4.asm						     Page 1 - 1
+
+
+				;默认采用ML6.11汇编程序
+ 0000				DATAS SEGMENT
+				    ;此处输入数据段代码  
+ 0000 45 6E 74 65 72 20		TIPS1 DB 'Enter Six Number:',13,10,'$'
+       53 69 78 20 4E 75
+       6D 62 65 72 3A 0D
+       0A 24
+ 0014 45 72 72 6F 72 20		TIPS2 DB 'Error Input! Try again!',13,10,'$'
+       49 6E 70 75 74 21
+       20 54 72 79 20 61
+       67 61 69 6E 21 0D
+       0A 24
+ 002E 41 66 74 65 72 20		TIPS3 DB 'After Sorting:',13,10,'$'
+       53 6F 72 74 69 6E
+       67 3A 0D 0A 24
+ 003F 54 68 65 20 53 75		TIPS4 DB 'The Sum is: ',13,10,'$'
+       6D 20 69 73 3A 20
+       0D 0A 24
+ 004E 0A			NUM   DB 10        ;缓冲区长度
+ 004F  00			      DB ?          ;实际输入个数
+ 0050  000A [			      DB 10 DUP('$') ;存储空间
+        24
+       ]
+ 005A  000A [			NUM_Dec DB 10 DUP('$') ;存放3组数据
+        24
+       ]
+ 0064  0008 [			SUM   DB 8 DUP(' ')   ;数据和
+        20
+       ]
+ 006C 0A			TEN_DB   DB 10        ;8位10
+ 006D 000A			TEN_DW   DW 10        ;16位10
+ 006F 0A 0D 24			LINE  DB 0AH,0DH,'$'  ;换行
+ 0072				DATAS ENDS
+
+ 0000				STACKS SEGMENT
+				    ;此处输入堆栈段代码
+ 0000  0020 [			    DW 20H DUP(0)
+        0000
+       ]
+ 0040				STACKS ENDS
+
+ 0000				CODES SEGMENT
+				    ASSUME CS:CODES,DS:DATAS,SS:STACKS
+ 0000				START:
+ 0000  B8 ---- R		    MOV AX,DATAS
+ 0003  8E D8			    MOV DS,AX
+				    ;此处输入代码段代码
+ 0005  8D 16 0000 R		    LEA DX,TIPS1  ;输出提示语1
+ 0009  B4 09			    MOV AH,9
+ 000B  CD 21			    INT 21H
+				    
+ 000D  8D 1E 004E R		    LEA BX,NUM        ;BX指向输入的字符串
+ 0011  E8 0020			    CALL INPUT_DEC    ;输入并检查合法性
+ 0014  81 F9 00FF		    CMP CX,0FFH       ;若CX被置为0FFH则不合法
+ 0018  75 03 E9 0112		    JZ OVER
+ 001D  E8 0106			    CALL PRINT_LINE   ;换行
+				    
+ 0020  8D 1E 0050 R		    LEA BX,NUM+2      ;BX指向字符串起始地址
+ 0024  E8 0038			    CALL TRANSITION   ;将6位十进制数转换为3个2位十进制数
+				    
+ 0027  8D 1E 005A R		    LEA BX,NUM_Dec    ;BX指向存放二位十进制数的数组
+ 002B  E8 0059			    CALL NUM_SUM      ;计算总和并输出
+				    
+ 002E  E8 0097			    CALL PRINT_SORT   ;排序并输出结果
+				    
+ 0031  E9 00FB			    JMP OVER
+				;主程序结束
+				;输入6位十进制数并检查合法性    
+ 0034				INPUT_DEC PROC
+ 0034  8B D3				MOV DX,BX    ;输入十进制数
+ 0036  B4 0A			    MOV AH,10     
+ 0038  CD 21			    INT 21H
+
+ 003A  BE 0001				MOV SI,1
+ 003D  8A 08			 	MOV CL,[BX][SI]  ;寄存器相对寻址
+ 003F  80 F9 06			    CMP CL,6         ;若长度不为6则非法
+ 0042  75 0F			    JNE ERROR
+ 0044				CHECK:
+ 0044  46			 	INC SI          ;字符串从偏移量为2的地方开始
+ 0045  8A 00				MOV AL,[BX][SI] ;AL依次存每个数
+ 0047  3C 30				CMP AL,30H      ;若小于0则非法
+ 0049  72 08			 	JB ERROR
+ 004B  3C 39			 	CMP AL,39H      ;若大于9则非法
+ 004D  77 04			 	JA ERROR
+ 004F  E2 F3			 	LOOP CHECK  
+ 0051  EB 0B			    JMP EXIT        ;比较结束，合法，跳转至出口
+ 0053				ERROR:
+ 0053  B9 00FF				MOV CX,0FFH   ;置CX为0FFH
+ 0056  8D 16 0014 R		 	LEA DX,TIPS2  ;输出提示语2
+ 005A  B4 09			    MOV AH,9
+ 005C  CD 21			    INT 21H
+ 005E  C3			EXIT: RET    ;返回   
+ 005F				INPUT_DEC ENDP 
+
+				;将6位十进制数转换为3个2位十进制数
+ 005F				TRANSITION PROC    
+ 005F  B9 0003			    MOV CX,3   ;三个数，循环三次
+ 0062  BE 0005				MOV SI,5   ;从末位开始
+ 0065  BF 0000			   	MOV DI,0   ;NUM_Dec数组的偏移量
+ 0068  33 C0			   	XOR AX,AX   ;清零
+ 006A  33 D2			   	XOR DX,DX  
+ 006C				TRAN:
+ 006C  8A 00				MOV AL,[BX][SI] ;取十位
+ 006E  2C 30				SUB AL,30H      ;转为数字
+ 0070  F6 26 006C R			MUL TEN_DB      ;乘10
+ 0074  8A 50 FF			 	MOV DL,[BX][SI-1] ;取个位
+ 0077  80 EA 30			 	SUB DL,30H       ;转为数字
+ 007A  02 C2			 	ADD AL,DL        ;十位加上个位
+ 007C  88 85 005A R		 	MOV NUM_Dec[DI],AL  ;转换后的二位十进制数存入数组
+ 0080  47			    INC DI
+ 0081  83 EE 02			    SUB SI,2        ;偏移量每次减2
+ 0084  E2 E6			    LOOP TRAN 
+ 0086  C3				RET             ;返回
+ 0087				TRANSITION ENDP
+
+				;计算总和并输出
+ 0087				NUM_SUM PROC
+ 0087  8D 16 003F R		    LEA DX,TIPS4  ;输出提示语4
+ 008B  B4 09			    MOV AH,9
+ 008D  CD 21			    INT 21H
+				    
+ 008F  33 C0			    XOR AX,AX   ;清零
+ 0091  BE 0000			    MOV SI,0    ;SI为BX偏移量
+ 0094				PLUS:
+ 0094  33 D2				XOR DX,DX   ;清零
+ 0096  8A 10				MOV DL,[BX][SI] ;取一个数存在DL中
+ 0098  03 C2			  	ADD AX,DX       ;AX依次加上三个数
+ 009A  46			 	INC SI
+ 009B  83 FE 03			 	CMP SI,3       ;没加到3个数则继续循环
+ 009E  75 F4			 	JNZ PLUS
+				 	
+ 00A0  BE 0000			 	MOV SI,0
+ 00A3				TURN_SUM:
+ 00A3  33 D2				XOR DX,DX      ;清零
+ 00A5  F7 36 006D R			DIV TEN_DW     ;除10取余得到各个位上的数值，余数存放在DL中
+ 00A9  80 C2 30				ADD DL,30H     ;余数转换为ASCII
+ 00AC  88 94 0064 R			MOV SUM[SI],DL ;存入数组
+ 00B0  46				INC SI
+ 00B1  83 F8 00				CMP AX,0      ;商为0则算法结束
+ 00B4  77 ED				JA TURN_SUM
+ 00B6				PRINT_SUM:
+ 00B6  4E				DEC SI          ;SI为数组中元素个数 
+ 00B7  8A 94 0064 R			MOV DL,SUM[SI]  ;按存放逆序输出即为正序
+ 00BB  B4 02				MOV AH,2        ;依次输出各个数位上的数值
+ 00BD  CD 21				INT 21H
+ 00BF  83 FE 00				CMP SI,0        ;SI为0说明最后一个数已输出
+ 00C2  75 F2				JNZ PRINT_SUM 
+
+ 00C4  E8 005F			    CALL PRINT_LINE   ;换行
+ 00C7  C3				RET               ;返回
+ 00C8				NUM_SUM ENDP
+
+ 00C8				PRINT_SORT PROC
+				;冒泡排序
+ 00C8  B9 0002				MOV CX,2   ;三个数，外层循环执行2次
+ 00CB				SORT1:
+ 00CB  BE 0000				MOV SI,0   ;清零
+ 00CE  BF 0000				MOV DI,0	
+ 00D1				SORT2:
+ 00D1  8A 00				MOV AL,[BX][SI]    ;取第一个元素
+ 00D3  8A 50 01				MOV DL,[BX][SI+1]  ;取第二个元素
+ 00D6  38 D0				CMP AL,DL    ;比较第一个元素和第二个元素的大小，若前者更大则跳转
+ 00D8  73 05				JNB SORT3
+ 00DA  88 10				MOV [BX][SI],DL  ;若前者更小，则交换
+ 00DC  88 40 01				MOV [BX][SI+1],AL
+ 00DF				SORT3:
+ 00DF  46				INC SI      ;偏移量加1
+ 00E0  47				INC DI	    ;计数加1
+ 00E1  3B F9				CMP DI,CX   ;DI记录内层循环个数，若DI<CX,继续比较后面的元素
+ 00E3  72 EC				JB SORT2
+ 00E5  E2 E4				LOOP SORT1   ;内层循环结束，开始下一次外层循环
+					
+				;输出排序后的数
+ 00E7  8D 16 002E R			LEA DX,TIPS3  ;输出提示语3
+ 00EB  B4 09			    MOV AH,9
+ 00ED  CD 21			    INT 21H
+
+ 00EF  B9 0003				MOV CX,3     ;循环三次
+ 00F2  BE 0000				MOV SI,0    ;SI为BX偏移量
+ 00F5				OUTPUT:
+ 00F5  33 C0				XOR AX,AX    ;清零
+ 00F7  33 D2				XOR DX,DX
+ 00F9  8A 00				MOV AL,[BX][SI]  ;取一个数存在AL中
+ 00FB  F6 36 006C R			DIV TEN_DB       ;除以10,字节除法余数在AH中
+ 00FF  8A D0				MOV DL,AL        ;商在AL中
+ 0101  80 FA 00				CMP DL,0         ;若商为0说明十位为0，跳转输出个位
+ 0104  74 09				JZ OUTPUT2 
+ 0106  80 C2 30				ADD DL,30H       ;商不为0，转换为ASCII输出十位
+ 0109  50				PUSH AX          ;保存，因为下面会使AH值改变
+ 010A  B4 02				MOV AH,2
+ 010C  CD 21				INT 21H
+ 010E  58				POP AX           ;恢复AX
+ 010F				OUTPUT2:
+ 010F  8A D4				MOV DL,AH      ;将余数存在DL中
+ 0111  80 C2 30				ADD DL,30H     ;转换为ASCII输出十位
+ 0114  B4 02				MOV AH,2
+ 0116  CD 21				INT 21H
+					
+ 0118  BA 0020				MOV DX,20H	   ;输出一个空格
+ 011B  B4 02				MOV AH,2
+ 011D  CD 21				INT 21H
+					
+ 011F  46				INC SI
+ 0120  E2 D3				LOOP OUTPUT    ;继续输出下一个数
+					
+ 0122  E8 0001				CALL PRINT_LINE  ;换行
+ 0125  C3				RET	
+ 0126				PRINT_SORT ENDP
+
+ 0126				PRINT_LINE PROC
+ 0126  8D 16 006F R		 	LEA DX,LINE   ;换行
+ 012A  B4 09			    MOV AH,9
+ 012C  CD 21			    INT 21H
+ 012E  C3			 RET
+ 012F				PRINT_LINE ENDP
+				 
+ 012F				OVER:
+ 012F  E8 FFF4			 CALL PRINT_LINE  ;换行
+ 0132  E9 FECB			 JMP START        ;重新开始
+				 
+ 0135  B4 4C			 MOV AH,4CH
+ 0137  CD 21			 INT 21H
+ 0139				CODES ENDS
+				    END START
+Microsoft (R) Macro Assembler Version 6.11		    05/31/22 14:40:50
+test4.asm						     Symbols 2 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+CODES  . . . . . . . . . . . . .	16 Bit	 0139	  Para	  Private 
+DATAS  . . . . . . . . . . . . .	16 Bit	 0072	  Para	  Private 
+STACKS . . . . . . . . . . . . .	16 Bit	 0040	  Para	  Private 
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+INPUT_DEC  . . . . . . . . . . .	P Near	 0034	  CODES	Length= 002B Public
+  CHECK  . . . . . . . . . . . .	L Near	 0044	  CODES	
+  ERROR  . . . . . . . . . . . .	L Near	 0053	  CODES	
+  EXIT . . . . . . . . . . . . .	L Near	 005E	  CODES	
+NUM_SUM  . . . . . . . . . . . .	P Near	 0087	  CODES	Length= 0041 Public
+  PLUS . . . . . . . . . . . . .	L Near	 0094	  CODES	
+  TURN_SUM . . . . . . . . . . .	L Near	 00A3	  CODES	
+  PRINT_SUM  . . . . . . . . . .	L Near	 00B6	  CODES	
+PRINT_LINE . . . . . . . . . . .	P Near	 0126	  CODES	Length= 0009 Public
+PRINT_SORT . . . . . . . . . . .	P Near	 00C8	  CODES	Length= 005E Public
+  SORT1  . . . . . . . . . . . .	L Near	 00CB	  CODES	
+  SORT2  . . . . . . . . . . . .	L Near	 00D1	  CODES	
+  SORT3  . . . . . . . . . . . .	L Near	 00DF	  CODES	
+  OUTPUT . . . . . . . . . . . .	L Near	 00F5	  CODES	
+  OUTPUT2  . . . . . . . . . . .	L Near	 010F	  CODES	
+TRANSITION . . . . . . . . . . .	P Near	 005F	  CODES	Length= 0028 Public
+  TRAN . . . . . . . . . . . . .	L Near	 006C	  CODES	
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+LINE . . . . . . . . . . . . . .	Byte	 006F	  DATAS	
+NUM_Dec  . . . . . . . . . . . .	Byte	 005A	  DATAS	
+NUM  . . . . . . . . . . . . . .	Byte	 004E	  DATAS	
+OVER . . . . . . . . . . . . . .	L Near	 012F	  CODES	
+START  . . . . . . . . . . . . .	L Near	 0000	  CODES	
+SUM  . . . . . . . . . . . . . .	Byte	 0064	  DATAS	
+TEN_DB . . . . . . . . . . . . .	Byte	 006C	  DATAS	
+TEN_DW . . . . . . . . . . . . .	Word	 006D	  DATAS	
+TIPS1  . . . . . . . . . . . . .	Byte	 0000	  DATAS	
+TIPS2  . . . . . . . . . . . . .	Byte	 0014	  DATAS	
+TIPS3  . . . . . . . . . . . . .	Byte	 002E	  DATAS	
+TIPS4  . . . . . . . . . . . . .	Byte	 003F	  DATAS	
+
+	   0 Warnings
+	   0 Errors
